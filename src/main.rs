@@ -17,7 +17,7 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
-use tracing::{Level, log::warn};
+use tracing::{log::warn, Level};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
@@ -28,7 +28,7 @@ struct AppSettings {
     max_content_length: usize,
     database_url: String,
     log_ip: bool,
-		listen_addr: SocketAddr,
+    listen_addr: SocketAddr,
 }
 
 struct AppState {
@@ -37,9 +37,9 @@ struct AppState {
 }
 
 fn log_setting_warnings(settings: &AppSettings) {
-	if !settings.log_ip {
-		warn!("IP logging disabled.");
-	}
+    if !settings.log_ip {
+        warn!("IP logging disabled.");
+    }
 }
 
 #[tokio::main]
@@ -64,10 +64,13 @@ async fn main() {
             .unwrap_or("true".into())
             .parse()
             .expect("Unable to parse LOG_IP to true or false"),
-				listen_addr: env::var("LISTEN_ADDR").unwrap_or("0.0.0.0:3000".into()).parse().expect("Unable to parse LISTEN_ADDR")
+        listen_addr: env::var("LISTEN_ADDR")
+            .unwrap_or("0.0.0.0:3000".into())
+            .parse()
+            .expect("Unable to parse LISTEN_ADDR"),
     };
 
-		log_setting_warnings(&settings);
+    log_setting_warnings(&settings);
 
     tracing::info!("Starting pastecord backend");
     let pool = PgPoolOptions::new()
@@ -85,7 +88,10 @@ async fn main() {
         .expect("Failed to migrate the database");
     tracing::info!("Ran database migrations");
 
-    let state = AppState { db: pool, settings: settings.clone(), };
+    let state = AppState {
+        db: pool,
+        settings: settings.clone(),
+    };
 
     // build our application with a route
     let app = Router::new()
