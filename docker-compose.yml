@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  database:
+    image: postgres:15
+    restart: always
+    ports: 
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - ./pg-data:/var/lib/postgresql
+
