@@ -26,6 +26,7 @@ mod repo;
 struct AppSettings {
     max_content_length: usize,
     database_url: String,
+    log_ip: bool,
 }
 
 struct AppState {
@@ -51,6 +52,10 @@ async fn main() {
             .expect("Unable to parse MAX_CONTENT_LENGTH setting"),
         database_url: env::var("DATABASE_URL")
             .unwrap_or("postgres://postgres:secret@localhost/pastecord".into()),
+        log_ip: env::var("LOG_IP")
+            .unwrap_or("true".into())
+            .parse()
+            .expect("Unable to parse LOG_IP to true or false"),
     };
 
     tracing::info!("Starting pastecord backend");
@@ -115,7 +120,13 @@ async fn documents_post(
         )
             .into_response();
     }
-    match repo::paste::add_paste(&state.db, body, info.ip()).await {
+    let ip = if state.settings.log_ip {
+        Some(info.ip().into())
+    } else {
+        None
+    };
+
+    match repo::paste::add_paste(&state.db, body, ip).await {
         Ok(created) => Json(Created {
             key: created.to_string(),
         })

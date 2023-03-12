@@ -5,20 +5,16 @@ use chrono::NaiveDateTime;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-pub async fn add_paste<Ip: Into<sqlx::types::ipnetwork::IpNetwork>>(
+pub async fn add_paste(
     pool: &PgPool,
     content: String,
-    ip: Ip,
+    ip: Option<sqlx::types::ipnetwork::IpNetwork>,
 ) -> Result<Uuid, Box<dyn Error>> {
     let rec = sqlx::query!(
-        r#"
-INSERT INTO pastes (id, content, ip)
-VALUES ( $1, $2, $3 )
-RETURNING id
-        "#,
+        r#" INSERT INTO pastes (id, content, ip) VALUES ( $1, $2, $3 ) RETURNING id"#,
         Uuid::new_v4(),
         content,
-        ip.into()
+        ip,
     )
     .fetch_one(pool)
     .await?;
@@ -32,7 +28,7 @@ pub struct Paste {
     pub content: String,
     pub created_at: NaiveDateTime,
     pub user_id: Option<i32>,
-    pub ip: sqlx::types::ipnetwork::IpNetwork,
+    pub ip: Option<sqlx::types::ipnetwork::IpNetwork>,
 }
 
 pub async fn get_paste(pool: &PgPool, id: Uuid) -> Result<Paste, Box<dyn Error>> {

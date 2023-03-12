@@ -34,7 +34,7 @@
         false,
         false,
         true,
-        false
+        true
       ],
       "parameters": {
         "Left": [
@@ -44,7 +44,7 @@
     },
     "query": "SELECT * FROM pastes WHERE id = $1"
   },
-  "da261287c88362f9fb4eec5eaf2a36eabcc8c4d6e8e7928bbe5cbdcb72e472f9": {
+  "dbb773d8e7beba07385a3d203c65e001a9f3f55648593b364d0d6a44541d1021": {
     "describe": {
       "columns": [
         {
@@ -64,6 +64,6 @@
         ]
       }
     },
-    "query": "\nINSERT INTO pastes (id, content, ip)\nVALUES ( $1, $2, $3 )\nRETURNING id\n        "
+    "query": " INSERT INTO pastes (id, content, ip) VALUES ( $1, $2, $3 ) RETURNING id"
   }
 }
