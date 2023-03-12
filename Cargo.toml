@@ -11,7 +11,7 @@ axum-macros = "0.3.5"
 chrono = { version = "0.4.23", features = ["serde"] }
 serde = "1.0.155"
 serde_derive = "1.0.155"
-sqlx = { version = "0.6.2", features = ["postgres", "runtime-tokio-native-tls", "uuid", "time", "chrono"] }
+sqlx = { version = "0.6.2", features = ["postgres", "runtime-tokio-native-tls", "uuid", "time", "chrono", "offline"] }
 tokio = { version = "1.26.0", features = ["full"] }
 tower = { version = "0.4.13", features = ["util"] }
 tower-http = { version = "0.4.0", features = ["fs", "trace"] }

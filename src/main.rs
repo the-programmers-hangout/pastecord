@@ -39,6 +39,7 @@ async fn main() {
     let app = Router::new()
         .route("/documents", post(documents_post))
         .route("/documents/:id", get(documents_get))
+        .route("/raw/:id", get(documents_get_raw))
         .nest_service(
             "/",
             ServeDir::new("static").fallback(ServeFile::new("static/index.html")),
@@ -119,6 +120,20 @@ async fn documents_get(
             key: found.id,
         })
         .into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, "Paste not found").into_response(),
+    }
+}
+
+async fn documents_get_raw(
+    Path(id): Path<Uuid>,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let item = sqlx::query_as!(Paste, "SELECT * FROM pastes WHERE id = $1", id)
+        .fetch_one(&state.db)
+        .await;
+
+    match item {
+        Ok(found) => found.content.into_response(),
         Err(_) => (StatusCode::NOT_FOUND, "Paste not found").into_response(),
     }
 }

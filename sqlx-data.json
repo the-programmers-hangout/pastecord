@@ -1,0 +1,56 @@
+{
+  "db": "PostgreSQL",
+  "95a4102b03c5735fb0cec4ef2157e109cc456ecdb2a1966782b00ac93182fb70": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "content",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 2,
+          "type_info": "Timestamp"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      }
+    },
+    "query": "SELECT * FROM pastes WHERE id = $1"
+  },
+  "f9633e9757d5221f7f89608a5f7a64480e0c56bd66b1b0aa9fa4a24726941cff": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text"
+        ]
+      }
+    },
+    "query": "\nINSERT INTO pastes (id, content)\nVALUES ( $1, $2 )\nRETURNING id\n        "
+  }
+}
