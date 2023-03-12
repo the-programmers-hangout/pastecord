@@ -9,31 +9,55 @@ use axum_macros::debug_handler;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
+use dotenv::dotenv;
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::{error::Error, net::SocketAddr, sync::Arc};
+use std::env;
+use std::{error::Error, net::SocketAddr, sync::Arc, time::Duration};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
+use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
+
+mod repo;
+
+struct AppSettings {
+    max_content_length: usize,
+    database_url: String,
+}
 
 struct AppState {
     db: PgPool,
+    settings: AppSettings,
 }
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    let settings = AppSettings {
+        max_content_length: env::var("MAX_CONTENT_LENGTH")
+            .unwrap_or("32768".into())
+            .parse()
+            .expect("Unable to parse MAX_CONTENT_LENGTH setting"),
+        database_url: env::var("DATABASE_URL")
+            .unwrap_or("postgres://postgres:secret@localhost/pastecord".into()),
+    };
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect("postgres://postgres:secret@localhost/pastecord")
+        .acquire_timeout(Duration::from_secs(5))
+        .test_before_acquire(true)
+        .connect(&settings.database_url)
         .await
         .expect("Unable to connect to postgres");
+    tracing::info!("Connected to database");
 
-    let state = AppState { db: pool };
+    let state = AppState { db: pool, settings };
 
     // build our application with a route
     let app = Router::new()
@@ -50,7 +74,7 @@ async fn main() {
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    tracing::debug!("listening on {}", addr);
+    tracing::info!("pastecord backend listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
@@ -69,25 +93,17 @@ struct Paste {
     created_at: NaiveDateTime,
 }
 
-async fn add_paste(pool: &PgPool, content: String) -> Result<Uuid, Box<dyn Error>> {
-    let rec = sqlx::query!(
-        r#"
-INSERT INTO pastes (id, content)
-VALUES ( $1, $2 )
-RETURNING id
-        "#,
-        Uuid::new_v4(),
-        content,
-    )
-    .fetch_one(pool)
-    .await?;
-
-    Ok(rec.id)
-}
-
 #[debug_handler]
 async fn documents_post(State(state): State<Arc<AppState>>, body: String) -> impl IntoResponse {
-    match add_paste(&state.db, body).await {
+    // Validate body length
+    if body.len() > state.settings.max_content_length || body.len() < 1 {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Content length must be between 1 and {state.settings.max_content_length}",
+        )
+            .into_response();
+    }
+    match repo::paste::add_paste(&state.db, body).await {
         Ok(created) => Json(Created {
             key: created.to_string(),
         })
@@ -110,9 +126,7 @@ async fn documents_get(
     Path(id): Path<Uuid>,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    let item = sqlx::query_as!(Paste, "SELECT * FROM pastes WHERE id = $1", id)
-        .fetch_one(&state.db)
-        .await;
+    let item = repo::paste::get_paste(&state.db, id).await;
 
     match item {
         Ok(found) => Json(FoundPaste {
@@ -128,9 +142,7 @@ async fn documents_get_raw(
     Path(id): Path<Uuid>,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    let item = sqlx::query_as!(Paste, "SELECT * FROM pastes WHERE id = $1", id)
-        .fetch_one(&state.db)
-        .await;
+    let item = repo::paste::get_paste(&state.db, id).await;
 
     match item {
         Ok(found) => found.content.into_response(),

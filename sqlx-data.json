@@ -17,12 +17,18 @@
           "name": "created_at",
           "ordinal": 2,
           "type_info": "Timestamp"
+        },
+        {
+          "name": "user_id",
+          "ordinal": 3,
+          "type_info": "Int4"
         }
       ],
       "nullable": [
         false,
         false,
-        false
+        false,
+        true
       ],
       "parameters": {
         "Left": [
