@@ -41,9 +41,6 @@ function App() {
   return (
     <div className="dark:bg-gray-900 text-white h-screen flex flex-col">
       <NavBar onSave={save} />
-      <div id="paste">
-        <Outlet />
-      </div>
       {documentId && content.length === 0 && (
         <div role="status" className="m-8">
           <svg
@@ -70,7 +67,6 @@ function App() {
       ) : (
         <NewPasteContent content={content} onChange={onContentChange} />
       )}
-      {/* <PasteContent language="asd" code={content} /> */}
       <div className="p-2 flex flex-row justify-between">
         <span className={content.length < 32768 ? "text-gray-400" : "text-red-300"}>
           Used {content.length} out of 32768 characters

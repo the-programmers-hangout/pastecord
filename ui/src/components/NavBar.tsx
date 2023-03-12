@@ -9,6 +9,7 @@ export const NavBar = (props: NavBarProps) => {
   return (
     <nav className="bg-white border-gray-200 px-8 py-2.5 dark:bg-gray-800 justify-between flex">
         <a href="/" className="flex items-center">
+					<img src="/public/icon.svg"></img>
           <span className="self-center text-xl font-semibold whitespace-nowrap dark:text-white">Pastecord</span>
         </a>
         <div className="hidden w-full md:block md:w-auto" id="navbar-default">
