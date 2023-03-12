@@ -22,13 +22,19 @@
           "name": "user_id",
           "ordinal": 3,
           "type_info": "Int4"
+        },
+        {
+          "name": "ip",
+          "ordinal": 4,
+          "type_info": "Cidr"
         }
       ],
       "nullable": [
         false,
         false,
         false,
-        true
+        true,
+        false
       ],
       "parameters": {
         "Left": [
@@ -38,7 +44,7 @@
     },
     "query": "SELECT * FROM pastes WHERE id = $1"
   },
-  "f9633e9757d5221f7f89608a5f7a64480e0c56bd66b1b0aa9fa4a24726941cff": {
+  "da261287c88362f9fb4eec5eaf2a36eabcc8c4d6e8e7928bbe5cbdcb72e472f9": {
     "describe": {
       "columns": [
         {
@@ -53,10 +59,11 @@
       "parameters": {
         "Left": [
           "Uuid",
-          "Text"
+          "Text",
+          "Cidr"
         ]
       }
     },
-    "query": "\nINSERT INTO pastes (id, content)\nVALUES ( $1, $2 )\nRETURNING id\n        "
+    "query": "\nINSERT INTO pastes (id, content, ip)\nVALUES ( $1, $2, $3 )\nRETURNING id\n        "
   }
 }

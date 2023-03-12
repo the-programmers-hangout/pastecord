@@ -1,22 +1,23 @@
 use axum::{
-    extract::{Path, State},
+    extract::{ConnectInfo, Path, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
 use axum_macros::debug_handler;
-use chrono::NaiveDateTime;
-use serde::{Deserialize, Serialize};
+
+use serde::Serialize;
 
 use dotenv::dotenv;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::env;
-use std::{error::Error, net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
+use tracing::Level;
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
@@ -36,7 +37,11 @@ struct AppState {
 async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(Level::INFO.into())
+                .from_env_lossy(),
+        )
         .init();
 
     let settings = AppSettings {
@@ -48,6 +53,7 @@ async fn main() {
             .unwrap_or("postgres://postgres:secret@localhost/pastecord".into()),
     };
 
+    tracing::info!("Starting pastecord backend");
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(5))
@@ -56,6 +62,12 @@ async fn main() {
         .await
         .expect("Unable to connect to postgres");
     tracing::info!("Connected to database");
+
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to migrate the database");
+    tracing::info!("Ran database migrations");
 
     let state = AppState { db: pool, settings };
 
@@ -76,7 +88,7 @@ async fn main() {
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     tracing::info!("pastecord backend listening on {}", addr);
     axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .unwrap();
 }
@@ -86,24 +98,24 @@ struct Created {
     key: String,
 }
 
-#[derive(sqlx::FromRow, Deserialize, Serialize)]
-struct Paste {
-    id: Uuid,
-    content: String,
-    created_at: NaiveDateTime,
-}
-
 #[debug_handler]
-async fn documents_post(State(state): State<Arc<AppState>>, body: String) -> impl IntoResponse {
+async fn documents_post(
+    State(state): State<Arc<AppState>>,
+    ConnectInfo(info): ConnectInfo<SocketAddr>,
+    body: String,
+) -> impl IntoResponse {
     // Validate body length
-    if body.len() > state.settings.max_content_length || body.len() < 1 {
+    if body.len() > state.settings.max_content_length || body.is_empty() {
         return (
             StatusCode::BAD_REQUEST,
-            "Content length must be between 1 and {state.settings.max_content_length}",
+            format!(
+                "Content length must be between 1 and {len}",
+                len = state.settings.max_content_length
+            ),
         )
             .into_response();
     }
-    match repo::paste::add_paste(&state.db, body).await {
+    match repo::paste::add_paste(&state.db, body, info.ip()).await {
         Ok(created) => Json(Created {
             key: created.to_string(),
         })

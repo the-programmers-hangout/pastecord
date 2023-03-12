@@ -10,4 +10,10 @@ services:
       POSTGRES_PASSWORD: secret
     volumes:
       - ./pg-data:/var/lib/postgresql
+  pastecord:
+    build:
+      context: .
+    environment:
+      - DATABASE_URL=postgres://postgres:secret@database/pastecord
+
 
