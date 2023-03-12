@@ -15,5 +15,7 @@ services:
       context: .
     environment:
       - DATABASE_URL=postgres://postgres:secret@database/pastecord
+    ports:
+      - 3000:3000
 
 

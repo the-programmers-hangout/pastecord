@@ -17,21 +17,29 @@ use tower_http::{
     services::{ServeDir, ServeFile},
     trace::TraceLayer,
 };
-use tracing::Level;
+use tracing::{Level, log::warn};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
 mod repo;
 
+#[derive(Clone)]
 struct AppSettings {
     max_content_length: usize,
     database_url: String,
     log_ip: bool,
+		listen_addr: SocketAddr,
 }
 
 struct AppState {
     db: PgPool,
     settings: AppSettings,
+}
+
+fn log_setting_warnings(settings: &AppSettings) {
+	if !settings.log_ip {
+		warn!("IP logging disabled.");
+	}
 }
 
 #[tokio::main]
@@ -56,7 +64,10 @@ async fn main() {
             .unwrap_or("true".into())
             .parse()
             .expect("Unable to parse LOG_IP to true or false"),
+				listen_addr: env::var("LISTEN_ADDR").unwrap_or("0.0.0.0:3000".into()).parse().expect("Unable to parse LISTEN_ADDR")
     };
+
+		log_setting_warnings(&settings);
 
     tracing::info!("Starting pastecord backend");
     let pool = PgPoolOptions::new()
@@ -74,7 +85,7 @@ async fn main() {
         .expect("Failed to migrate the database");
     tracing::info!("Ran database migrations");
 
-    let state = AppState { db: pool, settings };
+    let state = AppState { db: pool, settings: settings.clone(), };
 
     // build our application with a route
     let app = Router::new()
@@ -90,9 +101,8 @@ async fn main() {
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-    tracing::info!("pastecord backend listening on {}", addr);
-    axum::Server::bind(&addr)
+    tracing::info!("pastecord backend listening on {}", &settings.listen_addr);
+    axum::Server::bind(&settings.listen_addr)
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .unwrap();
