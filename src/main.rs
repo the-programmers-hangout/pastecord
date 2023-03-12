@@ -1,6 +1,6 @@
 use axum::{
     extract::{ConnectInfo, Path, State},
-    http::StatusCode,
+    http::{StatusCode, Method},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -15,7 +15,7 @@ use std::env;
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tower_http::{
     services::{ServeDir, ServeFile},
-    trace::TraceLayer,
+    trace::TraceLayer, cors::{CorsLayer, Any},
 };
 use tracing::{log::warn, Level};
 use tracing_subscriber::EnvFilter;
@@ -103,6 +103,7 @@ async fn main() {
             ServeDir::new("static").fallback(ServeFile::new("static/index.html")),
         )
         .with_state(Arc::new(state))
+				.layer(CorsLayer::new().allow_methods([Method::GET, Method::POST]).allow_origin(Any))
         .layer(TraceLayer::new_for_http());
 
     // run our app with hyper
